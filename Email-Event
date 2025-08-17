@@ -1,0 +1,12 @@
+let lookback = 30d;
+let TargetSender = ""; // Specify sender email address here
+EmailEvents
+| where TimeGenerated > ago(lookback)
+| where isnotempty(TargetSender) and SenderFromAddress contains TargetSender
+| project EmailTime = TimeGenerated, SenderFromAddress, SenderMailFromAddress, NetworkMessageId
+| join kind=inner (
+    UrlClickEvents
+    | where TimeGenerated > ago(lookback)
+    | project NetworkMessageId, UrlClickedTime = TimeGenerated, AccountUpn, Url
+) on NetworkMessageId
+| project EmailTime, SenderFromAddress, UrlClickedTime, Url, AccountUpn
