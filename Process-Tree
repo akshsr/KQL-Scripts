@@ -1,0 +1,6 @@
+Let PID = ""; // Enter Intiating Parent Process ID
+Let Endpoint = ""; // Enter the host name 
+
+DeviceProcessEvent 
+| where InitiatingProcessParentId	contains PID and DeviceName contains Endpoint
+| project TimeGenerated, DeviceName, InitiatingProcessParentId, InitiatingProcessFileName, FileName, ProcessCommandLine
