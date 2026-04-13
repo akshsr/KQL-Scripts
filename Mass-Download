@@ -1,0 +1,20 @@
+This KQL query detects users involved in potential mass download activity by correlating security alerts with actual download events. It first identifies users who triggered alerts related to “Mass download by a single user” in the last 8 hours and summarizes their alert count, latest alert time, and a sample file name. It then calculates the total number of files downloaded by each user from cloud activity logs. Finally, it joins both datasets to provide a combined view showing the user, alert details, associated file, and total download count, helping analysts investigate possible data exfiltration or suspicious bulk download behavior.
+
+let MassDownload = AlertEvidence | where Timestamp >= ago(8h) | where Title contains "Mass download by a single user" and EntityType contains "user" | project AccountObjectId, AccountName, FileName, Timestamp | summarize
+ MassAlertCount = count(),
+ LastAlertTimestamp = max(Timestamp),
+ AnyFile = any(FileName)
+ by AccountObjectId, AccountName | extend
+ FilePath = AnyFile,
+ TargetUsername = AccountName;
+ let UserDownloads = CloudAppEvents | where ActionType == "FileDownloaded" | project AccountObjectId, AccountDisplayName, Timestamp | summarize
+ FileDownloads = count(),
+ LastDownloadTimestamp = max(Timestamp)
+ by AccountObjectId;
+ MassDownload | join kind=leftouter UserDownloads on AccountObjectId | project
+ LastAlertTimestamp,
+ AccountName,
+ FileName = AnyFile,
+ FilePath,
+ TargetUsername,
+ FileDownloads | sort by LastAlertTimestamp asc
