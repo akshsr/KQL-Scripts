@@ -1,0 +1,27 @@
+This KQL query monitors file-sharing events from the last 8 hours where files are shared with guest users. It extracts details like the user, file name, file path, and external recipient, then summarizes the activity by user, including the count of shares and latest timestamp. The result helps identify external sharing behavior and potential data exposure risks.
+
+CloudAppEvents
+ | where Timestamp >= ago(8h)
+ | where ActionType == "SharingSet"
+ | where parse_json(RawEventData)["TargetUserOrGroupType"] == 'Guest'
+ | extend D = parse_json(RawEventData)
+ | extend 
+ UserID = tostring(D.UserId),
+ FileName = tostring(D.SourceRelativeUrl),
+ FilePath = tostring(D.ObjectId),
+ TargetUserName = replace_regex(tostring(D.TargetUserOrGroupName), "#.*", "")
+ | summarize 
+ Count = count(),
+ Timestamp = max(Timestamp),
+ FileName = any(FileName),
+ FilePath = any(FilePath),
+ TargetUserName = any(TargetUserName)
+ by UserID
+ | project 
+ Timestamp, 
+ UserID, 
+ FileName, 
+ Count, 
+ FilePath, 
+ TargetUserName
+ | sort by Timestamp asc
